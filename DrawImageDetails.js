@@ -41,10 +41,14 @@ function DrawSignature() {
 
       var plateSolvedData = this.readPlateSolvedData();
 
+      var xResolution = Math.atan(plateSolvedData.xPixSize / 2000.0 / plateSolvedData.focalLength) * 2.0 * 180.0 / Math.PI * 3600;
+      console.writeln("Computed X Pix Resolution [\"/pix]: ", xResolution);
+
       this.draw([
          "Calibration",
          "Center (RA, hms): " + plateSolvedData.ra,
-         "Center (DEC, dms): " + plateSolvedData.dec], false);
+         "Center (DEC, dms): " + plateSolvedData.dec,
+         "Resolution (\"/pix): " + xResolution.toFixed(2)], false);
 
       this.targetView.endProcess();
    };
@@ -119,16 +123,20 @@ function DrawSignature() {
          if (this.keywords[i].name == "OBJCTRA") {
             var match = /'(.+) (.+) (.+)'/.exec(this.keywords[i].value);
             plateSolvedData.ra = match[1] + "h " + match[2] + "m " + match[3] + "s";
-            console.writeln("Found Image Center RA : ", plateSolvedData.ra);
+            console.writeln("Found Image Center RA  [hms]: ", plateSolvedData.ra);
          }else
          if (this.keywords[i].name == "OBJCTDEC") {
             var match = /'(.+) (.+) (.+)'/.exec(this.keywords[i].value);
             plateSolvedData.dec = match[1] + "° " + match[2] + "' " + match[3] + "\"";
-            console.writeln("Found Image Center Dec: ", plateSolvedData.dec);
+            console.writeln("Found Image Center Dec [deg]: ", plateSolvedData.dec);
          } else
          if (this.keywords[i].name == "FOCALLEN") {
             plateSolvedData.focalLength = Number(this.keywords[i].value);
-            console.writeln("Found Focal Length    : ", plateSolvedData.focalLength);
+            console.writeln("Found Focal Length      [mm]: ", plateSolvedData.focalLength);
+         } else
+         if (this.keywords[i].name == "XPIXSZ") {
+            plateSolvedData.xPixSize = Number(this.keywords[i].value);
+            console.writeln("Found X Pix Size         [u]: ", plateSolvedData.xPixSize);
          }
       }
 
