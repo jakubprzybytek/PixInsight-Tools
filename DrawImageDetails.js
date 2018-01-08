@@ -1,12 +1,21 @@
+#include <pjsr/Sizer.jsh>
+#include <pjsr/FrameStyle.jsh>
+#include <pjsr/TextAlign.jsh>
+#include <pjsr/StdButton.jsh>
+#include <pjsr/StdIcon.jsh>
+
+#define VERSION   0.1
+#define TITLE     DrawImageDetails
+
 function DrawSignature() {
 
    this.initialize = function() {
 
-      this.text = "M11";
-      this.textTimestamp = "2017.08.29 00:00 CEST";
+      this.text = "M15";
+      this.textTimestamp = "2017.09.18 23:50 CEST";
       this.textOptics = "NT-203 (f=1000mm), UHC";
-      this.textSensor = "Canon 550d (Exp 60s, ISO 800)";
-      this.textStackInfo = "10 lights, 15 darks, 15 bias";
+      this.textSensor = "Canon 550d (Exp 30s, ISO 800)";
+      this.textStackInfo = "97 lights, 30 darks, 30 bias";
       this.textSoftware = "SGPro, PI";
       this.fontFace = "Verdana";
       this.fontSize = 64; // px
@@ -42,13 +51,21 @@ function DrawSignature() {
       var plateSolvedData = this.readPlateSolvedData();
 
       var xResolution = Math.atan(plateSolvedData.xPixSize / 2000.0 / plateSolvedData.focalLength) * 2.0 * 180.0 / Math.PI * 3600;
-      console.writeln("Computed X Pix Resolution [\"/pix]: ", xResolution);
+      var xScale = Math.atan(plateSolvedData.xPixSize * 5202.0 / 2000.0 / plateSolvedData.focalLength) * 2.0 * 180.0 / Math.PI * 3600;
+      var yScale = Math.atan(plateSolvedData.xPixSize * 3464.0 / 2000.0 / plateSolvedData.focalLength) * 2.0 * 180.0 / Math.PI * 3600;
+      xScale /= 60.0;
+      yScale /= 60.0;
+
+      console.writeln("Computed X Pix Resolution [\"/px]: ", xResolution);
+      console.writeln("Computed X Scale [\'/px]: ", xScale);
+      console.writeln("Computed Y Scale [\'/px]: ", yScale);
 
       this.draw([
          "Calibration",
          "Center (RA, hms): " + plateSolvedData.ra,
          "Center (DEC, dms): " + plateSolvedData.dec,
-         "Resolution (\"/pix): " + xResolution.toFixed(2)], false);
+         "Scale (\'/px): " + xScale.toFixed(2) + "' x " + yScale.toFixed(2) + "'",
+         "Resolution (\"/px): " + xResolution.toFixed(2)], false);
 
       this.targetView.endProcess();
    };
@@ -146,9 +163,113 @@ function DrawSignature() {
    this.initialize();
 }
 
+function DrawImageDetailsDialog() {
+   this.__base__ = Dialog;
+   this.__base__();
+
+   //
+
+   var emWidth = this.font.width( 'M' );
+   var labelWidth1 = this.font.width( "Target image:" );
+
+   //
+
+   this.helpLabel = new Label( this );
+   this.helpLabel.frameStyle = FrameStyle_Box;
+   this.helpLabel.margin = 4;
+   this.helpLabel.wordWrapping = true;
+   this.helpLabel.useRichText = true;
+   this.helpLabel.text = "<p><b>" + #TITLE + " v" + #VERSION +
+      "</b> &mdash; This script draws an arbitrary text at the lower-left corner of " +
+      "an image. You can enter the text to draw and select the font, along with a " +
+      "number of operating parameters below.</p>" +
+      "<p>To apply the script, click the OK button. To close this dialog without " +
+      "making any changes, click the Cancel button.</p>";
+
+   //
+
+   this.targetImage_Label = new Label( this );
+   this.targetImage_Label.text = "Target image:";
+   this.targetImage_Label.textAlignment = TextAlign_Right|TextAlign_VertCenter;
+   this.targetImage_Label.minWidth = labelWidth1;
+
+   this.targetImage_ViewList = new ViewList( this );
+   this.targetImage_ViewList.getAll();
+   //this.targetImage_ViewList.currentView = engine.targetView;
+   this.targetImage_ViewList.toolTip = "Select the image to draw the text over";
+   this.targetImage_ViewList.onViewSelected = function( view )
+   {
+      //engine.targetView = view;
+   };
+
+   this.targetImage_Sizer = new HorizontalSizer;
+   this.targetImage_Sizer.spacing = 4;
+   this.targetImage_Sizer.add( this.targetImage_Label );
+   this.targetImage_Sizer.add( this.targetImage_ViewList, 100 );
+
+
+   this.newInstance_Button = new ToolButton( this );
+   this.newInstance_Button.icon = this.scaledResource( ":/process-interface/new-instance.png" );
+   this.newInstance_Button.setScaledFixedSize( 24, 24 );
+   this.newInstance_Button.toolTip = "New Instance";
+   this.newInstance_Button.onMousePress = function()
+   {
+      this.hasFocus = true;
+      engine.exportParameters();
+      this.pushed = false;
+      this.dialog.newInstance();
+   };
+
+   this.ok_Button = new PushButton( this );
+   this.ok_Button.text = "OK";
+   this.ok_Button.icon = this.scaledResource( ":/icons/ok.png" );
+   this.ok_Button.onClick = function()
+   {
+      this.dialog.ok();
+   };
+
+   this.cancel_Button = new PushButton( this );
+   this.cancel_Button.text = "Cancel";
+   this.cancel_Button.icon = this.scaledResource( ":/icons/cancel.png" );
+   this.cancel_Button.onClick = function()
+   {
+      this.dialog.cancel();
+   };
+
+   this.buttons_Sizer = new HorizontalSizer;
+   this.buttons_Sizer.spacing = 6;
+   this.buttons_Sizer.add( this.newInstance_Button );
+   this.buttons_Sizer.addStretch();
+   this.buttons_Sizer.add( this.ok_Button );
+   this.buttons_Sizer.add( this.cancel_Button );
+
+   //
+
+   this.sizer = new VerticalSizer;
+   this.sizer.margin = 6;
+   this.sizer.spacing = 6;
+   this.sizer.add( this.helpLabel );
+   this.sizer.addSpacing( 4 );
+   this.sizer.add( this.targetImage_Sizer );
+   //this.sizer.add( this.text_Sizer );
+   //this.sizer.add( this.font_GroupBox );
+   //this.sizer.add( this.renderOptions_Sizer );
+   this.sizer.add( this.buttons_Sizer );
+
+   this.windowTitle = #TITLE + " Script";
+   this.adjustToContents();
+   //this.setFixedSize();
+}
+
+DrawImageDetailsDialog.prototype = new Dialog;
 
 function main()
 {
+   var dialog = new DrawImageDetailsDialog();
+
+   if ( !dialog.execute() )
+      return;
+
    var drawSignature = new DrawSignature;
    drawSignature.apply();
    return;
