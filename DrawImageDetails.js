@@ -7,15 +7,20 @@
 #define VERSION   0.1
 #define TITLE     DrawImageDetails
 
-function DrawSignature() {
+var drawImageDetailsParameters = {
+   title : "NGC2244 - Rosette",
+   timestamp : "2018.01.07 23:50 CET",
+   ota : "NT-203 (f=1000mm)",
+   filters : "Ha"
+};
+
+function DrawImageDetails(parameters) {
 
    this.initialize = function() {
 
-      this.text = "M15";
-      this.textTimestamp = "2017.09.18 23:50 CEST";
-      this.textOptics = "NT-203 (f=1000mm), UHC";
-      this.textSensor = "Canon 550d (Exp 30s, ISO 800)";
-      this.textStackInfo = "97 lights, 30 darks, 30 bias";
+      this.textSensor = "ASI1600MM-C Pro (Exp 30s, Gain 139)";
+//      this.textSensor = "Canon 550d (Exp 30s, ISO 800)";
+      this.textStackInfo = "35 lights";
       this.textSoftware = "SGPro, PI";
       this.fontFace = "Verdana";
       this.fontSize = 64; // px
@@ -39,10 +44,10 @@ function DrawSignature() {
       this.targetView.beginProcess();
 
       this.draw([
-         this.text,
-         this.textTimestamp,
+         this.parameters.title,
+         this.parameters.timestamp,
          "",
-         this.textOptics,
+         this.parameters.ota + ", " + this.parameters.filters,
          this.textSensor,
          this.textStackInfo,
          "",
@@ -72,18 +77,19 @@ function DrawSignature() {
 
    this.exportParameters = function()
    {
-      Parameters.set( "text", this.text );
-      Parameters.set( "textTimestamp", this.textTimestamp );
-      Parameters.set( "textOptics", this.textOptics );
-      Parameters.set( "textSensor", this.textSensor );
-      Parameters.set( "textStackInfo", this.textStackInfo );
-      Parameters.set( "textSoftware", this.textSoftware );
-      Parameters.set( "fontFace", this.fontFace );
-      Parameters.set( "fontSize", this.fontSize );
-      Parameters.set( "stretch", this.stretch );
-      Parameters.set( "textColor", format( "0x%x", this.textColor ) );
-      Parameters.set( "bkgColor", format( "0x%x", this.bkgColor ) );
-      Parameters.set( "margin", this.margin );
+      Parameters.set("title", this.parameters.title);
+      Parameters.set("timestamp", this.parameters.timestamp);
+      Parameters.set("ota", this.parameters.ota);
+      Parameters.set("filters", this.parameters.filters);
+      Parameters.set("textSensor", this.textSensor);
+      Parameters.set("textStackInfo", this.textStackInfo);
+      Parameters.set("textSoftware", this.textSoftware);
+      Parameters.set("fontFace", this.fontFace);
+      Parameters.set("fontSize", this.fontSize);
+      Parameters.set("stretch", this.stretch);
+      Parameters.set("textColor", format("0x%x", this.textColor));
+      Parameters.set("bkgColor", format("0x%x", this.bkgColor));
+      Parameters.set("margin", this.margin);
    };
 
    this.draw = function(texts, leftAlign)
@@ -160,10 +166,12 @@ function DrawSignature() {
       return plateSolvedData;
    }
 
+   this.parameters = parameters;
+console.writeln("Tit: ", this.parameters.title);
    this.initialize();
 }
 
-function DrawImageDetailsDialog() {
+function DrawImageDetailsDialog(parameters) {
    this.__base__ = Dialog;
    this.__base__();
 
@@ -180,11 +188,7 @@ function DrawImageDetailsDialog() {
    this.helpLabel.wordWrapping = true;
    this.helpLabel.useRichText = true;
    this.helpLabel.text = "<p><b>" + #TITLE + " v" + #VERSION +
-      "</b> &mdash; This script draws an arbitrary text at the lower-left corner of " +
-      "an image. You can enter the text to draw and select the font, along with a " +
-      "number of operating parameters below.</p>" +
-      "<p>To apply the script, click the OK button. To close this dialog without " +
-      "making any changes, click the Cancel button.</p>";
+      "</b> &mdash; This script...</p>";
 
    //
 
@@ -207,7 +211,109 @@ function DrawImageDetailsDialog() {
    this.targetImage_Sizer.add( this.targetImage_Label );
    this.targetImage_Sizer.add( this.targetImage_ViewList, 100 );
 
+   // Title
+   this.title_Label = new Label(this);
+   this.title_Label.text = "Title:";
+   this.title_Label.textAlignment = TextAlign_Right | TextAlign_VertCenter;
+   this.title_Label.minWidth = labelWidth1;
 
+   this.title_Edit = new Edit(this);
+   this.title_Edit.text = parameters.title;
+   this.title_Edit.minWidth = 42 * emWidth;
+   this.title_Edit.toolTip = "Enter title of the image";
+   this.title_Edit.onEditCompleted = function()
+   {
+      parameters.title = this.text;
+   };
+
+   this.title_Sizer = new HorizontalSizer;
+   this.title_Sizer.spacing = 4;
+   this.title_Sizer.add(this.title_Label);
+   this.title_Sizer.add(this.title_Edit);
+
+   // Timestamp
+   this.timestamp_Label = new Label(this);
+   this.timestamp_Label.text = "Timestamp:";
+   this.timestamp_Label.textAlignment = TextAlign_Right | TextAlign_VertCenter;
+   this.timestamp_Label.minWidth = labelWidth1;
+
+   this.timestamp_Edit = new Edit(this);
+   this.timestamp_Edit.text = parameters.timestamp;
+   this.timestamp_Edit.minWidth = 42 * emWidth;
+   this.timestamp_Edit.toolTip = "Enter time when the image was taken";
+   this.timestamp_Edit.onEditCompleted = function()
+   {
+      parameters.timestamp = this.text;
+   };
+
+   this.timestamp_Sizer = new HorizontalSizer;
+   this.timestamp_Sizer.spacing = 4;
+   this.timestamp_Sizer.add(this.timestamp_Label);
+   this.timestamp_Sizer.add(this.timestamp_Edit);
+
+   // ***********************
+   // * Optic train
+   // ***********************
+   var labelWidthOpticTrain = this.font.width("Filters:");
+
+   this.opticTrain_GroupBox = new GroupBox( this );
+   this.opticTrain_GroupBox.title = "Optic train";
+
+   // OTA
+   this.opticTrain_Label = new Label(this);
+   this.opticTrain_Label.text = "OTA:";
+   this.opticTrain_Label.textAlignment = TextAlign_Right | TextAlign_VertCenter;
+   this.opticTrain_Label.minWidth = labelWidthOpticTrain;
+
+   this.opticTrain_Edit = new Edit(this);
+   this.opticTrain_Edit.text = parameters.ota;
+   this.opticTrain_Edit.minWidth = 21 * emWidth;
+   this.opticTrain_Edit.toolTip = "Select the OTA";
+   this.opticTrain_Edit.onEditCompleted = function()
+   {
+      parameters.ota = this.text;
+   };
+
+   // Filters
+   this.filters_Label = new Label(this);
+   this.filters_Label.text = "Filters:";
+   this.filters_Label.textAlignment = TextAlign_Right | TextAlign_VertCenter;
+   this.filters_Label.minWidth = labelWidthOpticTrain;
+
+
+   this.filters_ComboBox = new ComboBox(this);
+   this.filters_ComboBox.addItem( "None" );
+   this.filters_ComboBox.addItem( "UHC" );
+   this.filters_ComboBox.addItem( "Ha" );
+   this.filters_ComboBox.editEnabled = true;
+   this.filters_ComboBox.editText = parameters.filters;
+   this.filters_ComboBox.toolTip = "Type or select filters set up.";
+   this.filters_ComboBox.onEditTextUpdated = function()
+   {
+      parameters.filters = this.editText;
+   };
+   this.filters_ComboBox.onItemSelected = function(index)
+   {
+      parameters.filters = this.itemText(index);
+   };
+
+   this.otaFilters_Sizer = new HorizontalSizer;
+   this.otaFilters_Sizer.spacing = 4;
+   this.otaFilters_Sizer.add(this.opticTrain_Label);
+   this.otaFilters_Sizer.add(this.opticTrain_Edit);
+   this.otaFilters_Sizer.add(this.filters_Label);
+   this.otaFilters_Sizer.add(this.filters_ComboBox);
+
+   this.opticTrain_Sizer = new VerticalSizer;
+   this.opticTrain_Sizer.margin = 4;
+   this.opticTrain_Sizer.spacing = 4;
+   this.opticTrain_Sizer.add(this.otaFilters_Sizer);
+
+   this.opticTrain_GroupBox.sizer = this.opticTrain_Sizer;
+
+   // ***********************
+   // * Buttons
+   // ***********************
    this.newInstance_Button = new ToolButton( this );
    this.newInstance_Button.icon = this.scaledResource( ":/process-interface/new-instance.png" );
    this.newInstance_Button.setScaledFixedSize( 24, 24 );
@@ -248,12 +354,13 @@ function DrawImageDetailsDialog() {
    this.sizer = new VerticalSizer;
    this.sizer.margin = 6;
    this.sizer.spacing = 6;
-   this.sizer.add( this.helpLabel );
+   this.sizer.add(this.helpLabel);
    this.sizer.addSpacing( 4 );
-   this.sizer.add( this.targetImage_Sizer );
-   //this.sizer.add( this.text_Sizer );
-   //this.sizer.add( this.font_GroupBox );
-   //this.sizer.add( this.renderOptions_Sizer );
+   this.sizer.add(this.targetImage_Sizer);
+   this.sizer.add(this.title_Sizer);
+   this.sizer.add(this.timestamp_Sizer);
+   this.sizer.add(this.opticTrain_GroupBox);
+  //this.sizer.add( this.renderOptions_Sizer );
    this.sizer.add( this.buttons_Sizer );
 
    this.windowTitle = #TITLE + " Script";
@@ -265,13 +372,14 @@ DrawImageDetailsDialog.prototype = new Dialog;
 
 function main()
 {
-   var dialog = new DrawImageDetailsDialog();
+   var dialog = new DrawImageDetailsDialog(drawImageDetailsParameters);
 
-   if ( !dialog.execute() )
+   if (!dialog.execute()) {
       return;
+   }
 
-   var drawSignature = new DrawSignature;
-   drawSignature.apply();
+   var drawImageDetails = new DrawImageDetails(drawImageDetailsParameters);
+   drawImageDetails.apply();
    return;
 }
 
