@@ -9,9 +9,12 @@
 
 var drawImageDetailsParameters = {
    title : "NGC2244 - Rosette",
-   timestamp : "2018.01.07 23:50 CET",
+   timestamp : "07.01.2018 23:50 CET",
    ota : "NT-203 (f=1000mm)",
-   filters : "Ha"
+   filters : "Ha",
+   options : {
+         filters : [ "None", "UHC", "Ha" ]
+   }
 };
 
 function DrawImageDetails(parameters) {
@@ -167,7 +170,7 @@ function DrawImageDetails(parameters) {
    }
 
    this.parameters = parameters;
-console.writeln("Tit: ", this.parameters.title);
+
    this.initialize();
 }
 
@@ -246,18 +249,31 @@ function DrawImageDetailsDialog(parameters) {
       parameters.timestamp = this.text;
    };
 
+   this.now_Button = new PushButton(this);
+   this.now_Button.text = "Now";
+   this.now_Button.onClick = function()
+   {
+      var now = new Date();
+      var dd = now.getDate();
+      var mm = now.getMonth() + 1;
+      var date = (dd < 10 ? '0' : '') + dd + '.' + (mm < 10 ? '0' : '') + mm + '.' + now.getFullYear();
+      var time = now.getHours() + ":00";
+      this.dialog.timestamp_Edit.text = date + " " + time;
+   };
+
    this.timestamp_Sizer = new HorizontalSizer;
    this.timestamp_Sizer.spacing = 4;
    this.timestamp_Sizer.add(this.timestamp_Label);
    this.timestamp_Sizer.add(this.timestamp_Edit);
+   this.timestamp_Sizer.add(this.now_Button);
 
    // ***********************
-   // * Optic train
+   // * Optical train
    // ***********************
    var labelWidthOpticTrain = this.font.width("Filters:");
 
    this.opticTrain_GroupBox = new GroupBox( this );
-   this.opticTrain_GroupBox.title = "Optic train";
+   this.opticTrain_GroupBox.title = "Optical train";
 
    // OTA
    this.opticTrain_Label = new Label(this);
@@ -282,11 +298,12 @@ function DrawImageDetailsDialog(parameters) {
 
 
    this.filters_ComboBox = new ComboBox(this);
-   this.filters_ComboBox.addItem( "None" );
-   this.filters_ComboBox.addItem( "UHC" );
-   this.filters_ComboBox.addItem( "Ha" );
+   for (var filter of parameters.options.filters) {
+      this.filters_ComboBox.addItem(filter);
+   }
    this.filters_ComboBox.editEnabled = true;
    this.filters_ComboBox.editText = parameters.filters;
+   this.filters_ComboBox.minWidth = 21 * emWidth;
    this.filters_ComboBox.toolTip = "Type or select filters set up.";
    this.filters_ComboBox.onEditTextUpdated = function()
    {
