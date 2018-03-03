@@ -8,12 +8,17 @@
 #define TITLE     DrawImageDetails
 
 var drawImageDetailsParameters = {
-   title : "NGC2244 - Rosette",
+   title : "M1 - Crab Nebula",
    timestamp : "07.01.2018 23:50 CET",
-   ota : "NT-203 (f=1000mm)",
+   ota : "NT-203 (f=1000mm), MPCC",
+   sensor: "ASI1600MM-C Pro (Gain 139)",
+   lightFrames: "Ha 60x2min, OIII 20x2min, SII 20x2min",
+   calibrationFrames: "40 Flat, 30 Dark, 50 Bias",
+   software : "SGPro, PI",
    filters : "Ha",
    options : {
-         filters : [ "None", "UHC", "Ha" ]
+         filters : [ "None", "UHC", "CLS", "IRpass", "Ha", "OIII", "SII" ],
+         sensor : ["ASI1600MM-C Pro (Gain 139)", "Canon 550d (ISO 800)"]
    }
 };
 
@@ -21,9 +26,7 @@ function DrawImageDetails(parameters) {
 
    this.initialize = function() {
 
-      this.textSensor = "ASI1600MM-C Pro (Exp 30s, Gain 139)";
 //      this.textSensor = "Canon 550d (Exp 30s, ISO 800)";
-      this.textStackInfo = "35 lights";
       this.textSoftware = "SGPro, PI";
       this.fontFace = "Verdana";
       this.fontSize = 64; // px
@@ -50,11 +53,12 @@ function DrawImageDetails(parameters) {
          this.parameters.title,
          this.parameters.timestamp,
          "",
-         this.parameters.ota + ", " + this.parameters.filters,
-         this.textSensor,
-         this.textStackInfo,
+         this.parameters.ota,
+         this.parameters.sensor,
+         this.parameters.lightFrames,
+         this.parameters.calibrationFrames,
          "",
-         this.textSoftware], true);
+         this.parameters.software], true);
 
       var plateSolvedData = this.readPlateSolvedData();
 
@@ -83,10 +87,11 @@ function DrawImageDetails(parameters) {
       Parameters.set("title", this.parameters.title);
       Parameters.set("timestamp", this.parameters.timestamp);
       Parameters.set("ota", this.parameters.ota);
+      Parameters.set("sensor", this.parameters.sensor);
+      Parameters.set("lightFrames", this.parameters.lightFrames);
+      Parameters.set("calibrationFrames", this.parameters.calibrationFrames);
       Parameters.set("filters", this.parameters.filters);
-      Parameters.set("textSensor", this.textSensor);
-      Parameters.set("textStackInfo", this.textStackInfo);
-      Parameters.set("textSoftware", this.textSoftware);
+      Parameters.set("software", this.parameters.software);
       Parameters.set("fontFace", this.fontFace);
       Parameters.set("fontSize", this.fontSize);
       Parameters.set("stretch", this.stretch);
@@ -191,7 +196,7 @@ function DrawImageDetailsDialog(parameters) {
    this.helpLabel.wordWrapping = true;
    this.helpLabel.useRichText = true;
    this.helpLabel.text = "<p><b>" + #TITLE + " v" + #VERSION +
-      "</b> &mdash; This script...</p>";
+      "</b> &mdash; This script annotates the image using plate solving data and details provided by the user.</p>";
 
    //
 
@@ -259,6 +264,7 @@ function DrawImageDetailsDialog(parameters) {
       var date = (dd < 10 ? '0' : '') + dd + '.' + (mm < 10 ? '0' : '') + mm + '.' + now.getFullYear();
       var time = now.getHours() + ":00";
       this.dialog.timestamp_Edit.text = date + " " + time;
+      parameters.timestamp = date + " " + time;
    };
 
    this.timestamp_Sizer = new HorizontalSizer;
@@ -268,7 +274,7 @@ function DrawImageDetailsDialog(parameters) {
    this.timestamp_Sizer.add(this.now_Button);
 
    // ***********************
-   // * Optical train
+   // * Optical train and sensor
    // ***********************
    var labelWidthOpticTrain = this.font.width("Filters:");
 
@@ -290,43 +296,136 @@ function DrawImageDetailsDialog(parameters) {
       parameters.ota = this.text;
    };
 
-   // Filters
-   this.filters_Label = new Label(this);
-   this.filters_Label.text = "Filters:";
-   this.filters_Label.textAlignment = TextAlign_Right | TextAlign_VertCenter;
-   this.filters_Label.minWidth = labelWidthOpticTrain;
-
-
-   this.filters_ComboBox = new ComboBox(this);
-   for (var filter of parameters.options.filters) {
-      this.filters_ComboBox.addItem(filter);
-   }
-   this.filters_ComboBox.editEnabled = true;
-   this.filters_ComboBox.editText = parameters.filters;
-   this.filters_ComboBox.minWidth = 21 * emWidth;
-   this.filters_ComboBox.toolTip = "Type or select filters set up.";
-   this.filters_ComboBox.onEditTextUpdated = function()
-   {
-      parameters.filters = this.editText;
-   };
-   this.filters_ComboBox.onItemSelected = function(index)
-   {
-      parameters.filters = this.itemText(index);
-   };
-
    this.otaFilters_Sizer = new HorizontalSizer;
    this.otaFilters_Sizer.spacing = 4;
    this.otaFilters_Sizer.add(this.opticTrain_Label);
    this.otaFilters_Sizer.add(this.opticTrain_Edit);
-   this.otaFilters_Sizer.add(this.filters_Label);
-   this.otaFilters_Sizer.add(this.filters_ComboBox);
+
+   // Sensor
+   this.sensor_Label = new Label(this);
+   this.sensor_Label.text = "Sensor:";
+   this.sensor_Label.textAlignment = TextAlign_Right | TextAlign_VertCenter;
+   this.sensor_Label.minWidth = labelWidthOpticTrain;
+
+   this.sensor_ComboBox = new ComboBox(this);
+   for (var sensor of parameters.options.sensor) {
+      this.sensor_ComboBox.addItem(sensor);
+   }
+   this.sensor_ComboBox.editEnabled = true;
+   this.sensor_ComboBox.editText = parameters.sensor;
+   this.sensor_ComboBox.minWidth = 21 * emWidth;
+   this.sensor_ComboBox.toolTip = "Type or select sensor from the list.";
+   this.sensor_ComboBox.onEditTextUpdated = function()
+   {
+      parameters.sensor = this.editText;
+   };
+   this.sensor_ComboBox.onItemSelected = function(index)
+   {
+      parameters.sensor = this.itemText(index);
+   };
+
+   this.sensor_Sizer = new HorizontalSizer;
+   this.sensor_Sizer.spacing = 4;
+   this.sensor_Sizer.add(this.sensor_Label);
+   this.sensor_Sizer.add(this.sensor_ComboBox);
 
    this.opticTrain_Sizer = new VerticalSizer;
    this.opticTrain_Sizer.margin = 4;
    this.opticTrain_Sizer.spacing = 4;
    this.opticTrain_Sizer.add(this.otaFilters_Sizer);
+   this.opticTrain_Sizer.add(this.sensor_Sizer);
 
    this.opticTrain_GroupBox.sizer = this.opticTrain_Sizer;
+
+   // ***********************
+   // * Integration details
+   // ***********************
+   var labelWidthIntegration = this.font.width("Calibration frames:");
+
+   this.integrationDetails_GroupBox = new GroupBox(this);
+   this.integrationDetails_GroupBox.title = "Integration details";
+
+   // Light frames
+   this.lightFrames_Label = new Label(this);
+   this.lightFrames_Label.text = "Light frames:";
+   this.lightFrames_Label.textAlignment = TextAlign_Right | TextAlign_VertCenter;
+   this.lightFrames_Label.minWidth = labelWidthIntegration;
+
+   this.lightFrames_Edit = new Edit(this);
+   this.lightFrames_Edit.text = parameters.lightFrames;
+   this.lightFrames_Edit.minWidth = 21 * emWidth;
+   this.lightFrames_Edit.toolTip = "Enter number of light frames";
+   this.lightFrames_Edit.onEditCompleted = function()
+   {
+      parameters.lightFrames = this.text;
+   };
+
+   this.ligthFrames_Sizer = new HorizontalSizer;
+   this.ligthFrames_Sizer.spacing = 4;
+   this.ligthFrames_Sizer.add(this.lightFrames_Label);
+   this.ligthFrames_Sizer.add(this.lightFrames_Edit);
+
+   // Calibration frames
+   this.calibrationFrames_Label = new Label(this);
+   this.calibrationFrames_Label.text = "Calibration frames:";
+   this.calibrationFrames_Label.textAlignment = TextAlign_Right | TextAlign_VertCenter;
+   this.calibrationFrames_Label.minWidth = labelWidthIntegration;
+
+   this.calibrationFrames_Edit = new Edit(this);
+   this.calibrationFrames_Edit.text = parameters.calibrationFrames;
+   this.calibrationFrames_Edit.minWidth = 21 * emWidth;
+   this.calibrationFrames_Edit.toolTip = "Enter number of calibration frames";
+   this.calibrationFrames_Edit.onEditCompleted = function()
+   {
+      parameters.calibrationFrames = this.text;
+   };
+
+   this.calibrationFrames_Sizer = new HorizontalSizer;
+   this.calibrationFrames_Sizer.spacing = 4;
+   this.calibrationFrames_Sizer.add(this.calibrationFrames_Label);
+   this.calibrationFrames_Sizer.add(this.calibrationFrames_Edit);
+
+   this.integrationDetails_Sizer = new VerticalSizer;
+   this.integrationDetails_Sizer.margin = 4;
+   this.integrationDetails_Sizer.spacing = 4;
+   this.integrationDetails_Sizer.add(this.ligthFrames_Sizer);
+   this.integrationDetails_Sizer.add(this.calibrationFrames_Sizer);
+
+   this.integrationDetails_GroupBox.sizer = this.integrationDetails_Sizer;
+
+   // ***********************
+   // * Software
+   // ***********************
+   var labelWidthSoftware = this.font.width("Software:");
+
+   this.software_GroupBox = new GroupBox(this);
+   this.software_GroupBox.title = "Software used";
+
+   this.software_Label = new Label(this);
+   this.software_Label.text = "Software:";
+   this.software_Label.textAlignment = TextAlign_Right | TextAlign_VertCenter;
+   this.software_Label.minWidth = labelWidthSoftware;
+
+   this.software_Edit = new Edit(this);
+   this.software_Edit.text = parameters.software;
+   this.software_Edit.minWidth = 21 * emWidth;
+   this.software_Edit.toolTip = "Enter software used in acquisition and processing";
+   this.software_Edit.onEditCompleted = function()
+   {
+      parameters.software = this.text;
+   };
+
+   this.software_Sizer = new HorizontalSizer;
+   this.software_Sizer.spacing = 4;
+   this.software_Sizer.add(this.software_Label);
+   this.software_Sizer.add(this.software_Edit);
+
+   this.softwareGroup_Sizer = new VerticalSizer;
+   this.softwareGroup_Sizer.margin = 4;
+   this.softwareGroup_Sizer.spacing = 4;
+   this.softwareGroup_Sizer.add(this.software_Sizer);
+
+   this.software_GroupBox.sizer = this.softwareGroup_Sizer;
 
    // ***********************
    // * Buttons
@@ -377,8 +476,9 @@ function DrawImageDetailsDialog(parameters) {
    this.sizer.add(this.title_Sizer);
    this.sizer.add(this.timestamp_Sizer);
    this.sizer.add(this.opticTrain_GroupBox);
-  //this.sizer.add( this.renderOptions_Sizer );
-   this.sizer.add( this.buttons_Sizer );
+   this.sizer.add(this.integrationDetails_GroupBox);
+   this.sizer.add(this.software_GroupBox);
+   this.sizer.add(this.buttons_Sizer);
 
    this.windowTitle = #TITLE + " Script";
    this.adjustToContents();
