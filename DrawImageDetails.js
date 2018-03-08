@@ -26,19 +26,18 @@ function DrawImageDetails(parameters) {
 
    this.initialize = function() {
 
-//      this.textSensor = "Canon 550d (Exp 30s, ISO 800)";
-      this.textSoftware = "SGPro, PI";
       this.fontFace = "Verdana";
-      this.fontSize = 64; // px
+      this.fontSize = 64; // px, 64
       this.stretch = 100;
       this.textColor = 0xff85929e;
       this.bkgColor = 0x80000000;
       this.margin = 32;
 
       var window = ImageWindow.activeWindow;
-      if ( !window.isNull ) {
+      if (!window.isNull) {
          this.targetView = window.currentView;
          this.keywords = window.keywords;
+         console.writeln("H ", this.targetView.image.height);
       }
 
       console.writeln("Using view: ", this.targetView.id);
@@ -49,6 +48,7 @@ function DrawImageDetails(parameters) {
 
       this.targetView.beginProcess();
 
+      // Image Details
       this.draw([
          this.parameters.title,
          this.parameters.timestamp,
@@ -60,11 +60,14 @@ function DrawImageDetails(parameters) {
          "",
          this.parameters.software], true);
 
+      // Plate Solving Data
+      var imageWidth = this.targetView.image.width;
+      var imageHeight = this.targetView.image.height;
       var plateSolvedData = this.readPlateSolvedData();
 
       var xResolution = Math.atan(plateSolvedData.xPixSize / 2000.0 / plateSolvedData.focalLength) * 2.0 * 180.0 / Math.PI * 3600;
-      var xScale = Math.atan(plateSolvedData.xPixSize * 5202.0 / 2000.0 / plateSolvedData.focalLength) * 2.0 * 180.0 / Math.PI * 3600;
-      var yScale = Math.atan(plateSolvedData.xPixSize * 3464.0 / 2000.0 / plateSolvedData.focalLength) * 2.0 * 180.0 / Math.PI * 3600;
+      var xScale = Math.atan(plateSolvedData.xPixSize * imageWidth / 2000.0 / plateSolvedData.focalLength) * 2.0 * 180.0 / Math.PI * 3600;
+      var yScale = Math.atan(plateSolvedData.xPixSize * imageHeight / 2000.0 / plateSolvedData.focalLength) * 2.0 * 180.0 / Math.PI * 3600;
       xScale /= 60.0;
       yScale /= 60.0;
 
