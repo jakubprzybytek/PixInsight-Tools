@@ -10,16 +10,17 @@
 var drawImageDetailsParameters = {
    title : "M1 - Crab Nebula",
    timestamp : "07.01.2018 23:50 CET",
-   ota : "NT-203 (f=1000mm), MPCC",
+   ota : "TS-102/7, TSRED379 (f=578)",
    sensor: "ASI1600MM-C Pro (Gain 139)",
    lightFrames: "Ha 60x2min, OIII 20x2min, SII 20x2min",
    calibrationFrames: "40 Flat, 30 Dark, 50 Bias",
    software : "SGPro, PI",
-   filters : "Ha",
    options : {
-         filters : [ "None", "UHC", "CLS", "IRpass", "Ha", "OIII", "SII" ],
+         otas : [ "TS-102/7, TSRED379 (f=578)", "NT-203 (f=1000mm), MPCC" ],
+         //filters : [ "None", "UHC", "CLS", "IRpass", "Ha", "OIII", "SII" ],
          sensor : ["ASI1600MM-C Pro (Gain 139)", "Canon 550d (ISO 800)"]
-   }
+   },
+   targetView: ImageWindow.activeWindow.currentView
 };
 
 function DrawImageDetails(parameters) {
@@ -33,11 +34,10 @@ function DrawImageDetails(parameters) {
       this.bkgColor = 0x80000000;
       this.margin = 32;
 
-      var window = ImageWindow.activeWindow;
+      var window = ImageWindow.windowById(parameters.targetView.id);// ImageWindow.activeWindow;
       if (!window.isNull) {
          this.targetView = window.currentView;
          this.keywords = window.keywords;
-         console.writeln("H ", this.targetView.image.height);
       }
 
       console.writeln("Using view: ", this.targetView.id);
@@ -49,6 +49,15 @@ function DrawImageDetails(parameters) {
       this.targetView.beginProcess();
 
       // Image Details
+      this.drawImageDetails();
+
+      // Plate Solving Data
+      this.drawImageSolveData();
+
+      this.targetView.endProcess();
+   };
+
+   this.drawImageDetails = function() {
       this.draw([
          this.parameters.title,
          this.parameters.timestamp,
@@ -59,8 +68,9 @@ function DrawImageDetails(parameters) {
          this.parameters.calibrationFrames,
          "",
          this.parameters.software], true);
+   }
 
-      // Plate Solving Data
+   this.drawImageSolveData = function() {
       var imageWidth = this.targetView.image.width;
       var imageHeight = this.targetView.image.height;
       var plateSolvedData = this.readPlateSolvedData();
@@ -81,9 +91,7 @@ function DrawImageDetails(parameters) {
          "Center (DEC, dms): " + plateSolvedData.dec,
          "Scale (\'/px): " + xScale.toFixed(2) + "' x " + yScale.toFixed(2) + "'",
          "Resolution (\"/px): " + xResolution.toFixed(2)], false);
-
-      this.targetView.endProcess();
-   };
+   }
 
    this.exportParameters = function()
    {
@@ -93,7 +101,6 @@ function DrawImageDetails(parameters) {
       Parameters.set("sensor", this.parameters.sensor);
       Parameters.set("lightFrames", this.parameters.lightFrames);
       Parameters.set("calibrationFrames", this.parameters.calibrationFrames);
-      Parameters.set("filters", this.parameters.filters);
       Parameters.set("software", this.parameters.software);
       Parameters.set("fontFace", this.fontFace);
       Parameters.set("fontSize", this.fontSize);
@@ -193,7 +200,7 @@ function DrawImageDetailsDialog(parameters) {
 
    //
 
-   this.helpLabel = new Label( this );
+   this.helpLabel = new Label(this);
    this.helpLabel.frameStyle = FrameStyle_Box;
    this.helpLabel.margin = 4;
    this.helpLabel.wordWrapping = true;
@@ -203,24 +210,24 @@ function DrawImageDetailsDialog(parameters) {
 
    //
 
-   this.targetImage_Label = new Label( this );
+   this.targetImage_Label = new Label(this);
    this.targetImage_Label.text = "Target image:";
-   this.targetImage_Label.textAlignment = TextAlign_Right|TextAlign_VertCenter;
+   this.targetImage_Label.textAlignment = TextAlign_Right | TextAlign_VertCenter;
    this.targetImage_Label.minWidth = labelWidth1;
 
-   this.targetImage_ViewList = new ViewList( this );
+   this.targetImage_ViewList = new ViewList(this);
    this.targetImage_ViewList.getAll();
-   //this.targetImage_ViewList.currentView = engine.targetView;
+   this.targetImage_ViewList.currentView = parameters.targetView;
    this.targetImage_ViewList.toolTip = "Select the image to draw the text over";
-   this.targetImage_ViewList.onViewSelected = function( view )
+   this.targetImage_ViewList.onViewSelected = function(view)
    {
-      //engine.targetView = view;
+      parameters.targetView = view;
    };
 
    this.targetImage_Sizer = new HorizontalSizer;
    this.targetImage_Sizer.spacing = 4;
-   this.targetImage_Sizer.add( this.targetImage_Label );
-   this.targetImage_Sizer.add( this.targetImage_ViewList, 100 );
+   this.targetImage_Sizer.add(this.targetImage_Label);
+   this.targetImage_Sizer.add(this.targetImage_ViewList, 100);
 
    // Title
    this.title_Label = new Label(this);
@@ -279,30 +286,38 @@ function DrawImageDetailsDialog(parameters) {
    // ***********************
    // * Optical train and sensor
    // ***********************
-   var labelWidthOpticTrain = this.font.width("Filters:");
+   var labelWidthOpticTrain = this.font.width("Sensor:");
 
    this.opticTrain_GroupBox = new GroupBox( this );
    this.opticTrain_GroupBox.title = "Optical train";
 
    // OTA
-   this.opticTrain_Label = new Label(this);
-   this.opticTrain_Label.text = "OTA:";
-   this.opticTrain_Label.textAlignment = TextAlign_Right | TextAlign_VertCenter;
-   this.opticTrain_Label.minWidth = labelWidthOpticTrain;
+   this.ota_Label = new Label(this);
+   this.ota_Label.text = "OTA:";
+   this.ota_Label.textAlignment = TextAlign_Right | TextAlign_VertCenter;
+   this.ota_Label.minWidth = labelWidthOpticTrain;
 
-   this.opticTrain_Edit = new Edit(this);
-   this.opticTrain_Edit.text = parameters.ota;
-   this.opticTrain_Edit.minWidth = 21 * emWidth;
-   this.opticTrain_Edit.toolTip = "Select the OTA";
-   this.opticTrain_Edit.onEditCompleted = function()
+   this.ota_ComboBox = new ComboBox(this);
+   for (var ota of parameters.options.otas) {
+      this.ota_ComboBox.addItem(ota);
+   }
+   this.ota_ComboBox.editEnabled = true;
+   this.ota_ComboBox.editText = parameters.ota;
+   this.ota_ComboBox.minWidth = 42 * emWidth;
+   this.ota_ComboBox.toolTip = "Type or select the OTA";
+   this.ota_ComboBox.onEditTextUpdated = function()
    {
-      parameters.ota = this.text;
+      parameters.ota = this.editText;
+   };
+   this.ota_ComboBox.onItemSelected = function(index)
+   {
+      parameters.ota = this.itemText(index);
    };
 
-   this.otaFilters_Sizer = new HorizontalSizer;
-   this.otaFilters_Sizer.spacing = 4;
-   this.otaFilters_Sizer.add(this.opticTrain_Label);
-   this.otaFilters_Sizer.add(this.opticTrain_Edit);
+   this.ota_Sizer = new HorizontalSizer;
+   this.ota_Sizer.spacing = 4;
+   this.ota_Sizer.add(this.ota_Label);
+   this.ota_Sizer.add(this.ota_ComboBox);
 
    // Sensor
    this.sensor_Label = new Label(this);
@@ -335,7 +350,7 @@ function DrawImageDetailsDialog(parameters) {
    this.opticTrain_Sizer = new VerticalSizer;
    this.opticTrain_Sizer.margin = 4;
    this.opticTrain_Sizer.spacing = 4;
-   this.opticTrain_Sizer.add(this.otaFilters_Sizer);
+   this.opticTrain_Sizer.add(this.ota_Sizer);
    this.opticTrain_Sizer.add(this.sensor_Sizer);
 
    this.opticTrain_GroupBox.sizer = this.opticTrain_Sizer;
@@ -492,6 +507,8 @@ DrawImageDetailsDialog.prototype = new Dialog;
 
 function main()
 {
+   //drawImageDetailsParameters.targetView = window.currentView;
+
    var dialog = new DrawImageDetailsDialog(drawImageDetailsParameters);
 
    if (!dialog.execute()) {
