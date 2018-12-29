@@ -10,9 +10,16 @@ imageOptions.loadImagesFromDirectory("d:\\Astro\\_Lib\\ASI1600MM-C Pro\\Stats");
 
 imageOptions.report();
 
-var flats = imageOptions.flats;
+var stats = {};
 
-CalculateEGainForCollection(flats[0]);
-CalculateEGainForCollection(flats[75]);
+CalculateEGain(stats, imageOptions.flats);
 
 imageOptions.closeRegisteredImages();
+
+console.writeln("----------------------------------");
+console.writeln("<b>Computed sensor stats</b>");
+
+console.writeln("Gain:");
+for (var gainKey of Object.keys(stats.eGain)) {
+   console.writeln(gainKey + " : " + stats.eGain[gainKey].toFixed(2) + " -e/ADU");
+}
