@@ -15,7 +15,8 @@ function CalculateEGainsForPairs(images) {
    var variances = [];
 
    for (var i = 0; i < images.length - 1; i++) {
-      for (var j = i + 1; j < images.length; j++) {
+      //for (var j = i + 1; j < images.length; j++) {
+         var j = i + 1;
 
          var firstImageView = images[i].window.mainView;
          var secondImageView = images[j].window.mainView;
@@ -29,34 +30,66 @@ function CalculateEGainsForPairs(images) {
 
          means.push(meansADU);
          variances.push(varianceADU);
-      }
+      //}
    }
 
    return { means: means, variances: variances };
 }
 
-function CalculateEGainForGain(images) {
+function CalculateEGainForGain(images, gainKey) {
 
-   var gains = CalculateEGainsForPairs(images);
+   // spit images by exposure time
+   var imagesPerExposure = {};
 
-   console.writeln("Computing avarage for: " + JSON.stringify(gains));
-
-   //var results = findLineByLeastSquares(gains.means, gains.variances);
-   //console.writeln("<b>eGain</b>: " + results[0] + " " + results[1]);
-
-   var eGainSum = 0;
-   for (var i in gains.means) {
-      eGainSum += gains.means[i] / gains.variances[i];
+   for (var imageRecord of images) {
+      var exposure = imageRecord.fitsHeader.exposure;
+      if (exposure in imagesPerExposure) {
+         imagesPerExposure[exposure].push(imageRecord);
+      } else {
+         imagesPerExposure[exposure] = [imageRecord];
+      }
    }
-   return eGainSum / gains.means.length;
+
+   // compute avarage eGain for each exposure separatelly
+   var meansPerExposure = [];
+   var variancesPerExposure = [];
+
+   for (var exposure of Object.keys(imagesPerExposure)) {
+      console.writeln("\n<b>Calculating eGain</b> for gain " + gainKey + " and exposure " + exposure);
+
+      var gains = CalculateEGainsForPairs(imagesPerExposure[exposure]);
+
+      console.writeln("Computing avarage for: " + JSON.stringify(gains));
+
+      var avarageMean = MyMath.avg(gains.means);
+      var avarageVariance = MyMath.avg(gains.variances);
+
+      console.writeln("Avarage eGain m/v: " + avarageMean + " / " + avarageVariance + " = " + avarageMean / avarageVariance);
+
+      meansPerExposure.push(avarageMean);
+      variancesPerExposure.push(avarageVariance);
+   }
+
+   // compute single value or use linear regression
+   if (meansPerExposure.length == 1) {
+      var result = meansPerExposure[0] / variancesPerExposure[0];
+      console.writeln("<b>eGain</b>: " + result.toFixed(2));
+      return result;
+   } else {
+      var results = findLineByLeastSquares(variancesPerExposure, meansPerExposure);
+      console.writeln("\n<b>eGain from linear regression</b>: " + results[0].toFixed(2) + " (b=" + results[1].toFixed(2) + ")");
+      return results[0];
+   }
 }
 
 function CalculateEGain(stats, flats) {
 
+   console.write("----------------------------------");
+
    stats.eGain = {};
 
    for (var gainKey of Object.keys(flats)) {
-      var eGainForGain = CalculateEGainForGain(flats[gainKey]);
+      var eGainForGain = CalculateEGainForGain(flats[gainKey], gainKey);
       stats.eGain[gainKey] = eGainForGain;
    }
 }
