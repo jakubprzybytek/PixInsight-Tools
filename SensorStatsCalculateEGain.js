@@ -1,4 +1,3 @@
-#include "SensorStatsImageMath.js"
 #include "LinearRegression.js"
 
 function CreateDiffImage(firstImageView, secondImageView) {

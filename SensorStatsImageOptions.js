@@ -1,4 +1,4 @@
-function ImageOptions() {
+function ImageOptions(stats) {
 
    function ImageRecord(window, fitsHeader) {
 
@@ -6,32 +6,25 @@ function ImageOptions() {
 
       this.fitsHeader = fitsHeader;
 
+      this.getView = function() {
+         return this.window.mainView;
+      }
+
    }
+
+   this.stats = stats;
 
    this.biases = {};
 
    this.darks = {};
 
    this.flats = {};
-/*
-   this.loadImage = function (imageId) {
-      var window = ImageWindow.windowById(imageId);
-      if (!window.isNull) {
-         var fitsHeader = this.readFitsHeader(window.keywords);
-         console.writeln("Loaded file: type: " + fitsHeader.imageType + ", Gain: " + fitsHeader.gain + ", exposure: " + fitsHeader.exposure + ", temp: " + fitsHeader.sensorTemp);
-
-         this.registerImage(fitsHeader);
-      } else {
-         console.writeln("Image with ID not fount: " + imageId);
-      }
-   }*/
 
    this.loadImageFromFile = function (directory, fileName) {
-      //console.writeln("Loading: " + fileName);
       var window = ImageWindow.open(directory + "\\" + fileName)[0];
       if (!window.isNull) {
          var fitsHeader = this.readFitsHeader(window.keywords);
-         console.writeln("<b>Loaded file</b>: type: " + fitsHeader.imageType + ", Gain: " + fitsHeader.gain + ", exposure: " + fitsHeader.exposure + ", temp: " + fitsHeader.sensorTemp);
+         console.writeln("<b>Loaded file</b>: type: ", fitsHeader.imageType, ", Gain: ", fitsHeader.gain, ", exposure: ", fitsHeader.exposure, ", temp: ", fitsHeader.sensorTemp);
 
          this.registerImage(window, fitsHeader);
 /*
@@ -40,7 +33,6 @@ function ImageOptions() {
          console.writeln("Avg dev? " + window.mainView.image.avgDev() + " " + window.mainView.image.avgDev() * 65535);
          console.writeln("Std dev? " + window.mainView.image.stdDev() + " " + window.mainView.image.stdDev() * 65535);
 */
-         //window.close();
       } else {
          console.writeln("Image not loaded");
       }
@@ -51,7 +43,7 @@ function ImageOptions() {
       console.writeln("<b>Loading images from: " + directoryRoot + "</b>");
 
       var fileFind = new FileFind;
-      if (fileFind.begin(directoryRoot + "/F*.fit")) {
+      if (fileFind.begin(directoryRoot + "/*.fit")) {
          do {
             if (fileFind.name != "." && fileFind.name != "..") {
                this.loadImageFromFile(directoryRoot, fileFind.name);
@@ -119,13 +111,27 @@ function ImageOptions() {
    }
 
    this.reportCollection = function (collection) {
-      var imagesCount = 0;
+      var imagesStats = Object.keys(collection).reduce(function (acc, gainKey) {
+               var images = collection[gainKey];
+               acc.count += images.length;
+               acc.exposures = images.reduce(function (expAcc, imageRecord) {
+                     if (expAcc.indexOf(imageRecord.fitsHeader.exposure) === -1) {
+                        expAcc.push(imageRecord.fitsHeader.exposure);
+                     }
+                     return expAcc;
+                  }, acc.exposures);
+               acc.temps = images.reduce(function (tempAcc, imageRecord) {
+                     if (tempAcc.indexOf(imageRecord.fitsHeader.sensorTemp) === -1) {
+                        tempAcc.push(imageRecord.fitsHeader.sensorTemp);
+                     }
+                     return tempAcc;
+                  }, acc.temps);
+               return acc;
+            },
+            { count: 0, exposures: [], temps: []}
+         );
 
-      Object.keys(collection).forEach(e =>
-         imagesCount += collection[e].length
-      );
-
-      console.writeln("Loaded " + imagesCount + " files, gains: " + Object.keys(collection));
+      console.writeln("Loaded " + imagesStats.count + " files, gains: [" + Object.keys(collection) + "], exposures: [" + imagesStats.exposures + "], sensor temperatures: [" + imagesStats.temps + "]");
    }
 
    this.report = function () {

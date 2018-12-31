@@ -9,5 +9,5 @@ function CalculateDynamicRange(stats) {
       stats.dynamicRange[gainKey] = stats.eGain[gainKey] * (Math.pow(2, stats.bitRate));
    }
 
-   console.writeln("<b>Dynamic</b> range: " + JSON.stringify(stats.dynamicRange));
+   console.writeln("<b>Dynamic range</b>: " + JSON.stringify(stats.dynamicRange));
 }
